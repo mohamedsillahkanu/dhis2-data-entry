@@ -381,25 +381,36 @@
                 // Submit to Google Apps Script proxy
                 const response = await fetch(proxyUrl, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(payload)
                 });
 
-                // Note: no-cors mode doesn't allow reading the response
-                // So we assume success if no error was thrown
-                showStatus('success', '✅ Data submitted successfully!\n\nNote: Due to no-cors mode, we cannot verify the exact response from DHIS2.\nPlease check your DHIS2 instance to confirm the data was saved.');
+                console.log('Response status:', response.status);
                 
-                // Reset form after 2 seconds
-                setTimeout(() => {
-                    document.getElementById('surveyForm').reset();
-                }, 2000);
+                const result = await response.json();
+                console.log('Response body:', result);
+
+                if (result.success && result.statusCode === 200) {
+                    const importCount = result.data.importCount;
+                    showStatus('success', `✅ Data submitted successfully!\n\n` +
+                        `Imported: ${importCount?.imported || 0} values\n` +
+                        `Updated: ${importCount?.updated || 0} values\n` +
+                        `Ignored: ${importCount?.ignored || 0} values\n\n` +
+                        `Status: ${result.data.status}`);
+                    
+                    // Reset form after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('surveyForm').reset();
+                    }, 3000);
+                } else {
+                    throw new Error(result.data?.description || result.error || 'Submission failed');
+                }
 
             } catch (error) {
                 console.error('Full error details:', error);
-                showStatus('error', `❌ Error: ${error.message}\n\nPlease check:\n1. Your proxy URL is correct\n2. The proxy script is deployed as a web app\n3. Access is set to "Anyone"`);
+                showStatus('error', `❌ Error: ${error.message}\n\nPlease check the Google Apps Script logs for more details.\n\nCommon issues:\n1. Wrong credentials (username/password)\n2. Wrong organization unit ID\n3. Invalid period format\n4. Dataset not assigned to org unit`);
             }
 
             submitBtn.disabled = false;
