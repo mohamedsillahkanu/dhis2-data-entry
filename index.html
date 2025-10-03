@@ -286,6 +286,10 @@
             };
 
             try {
+                // First, test connectivity
+                console.log('Testing connection to:', serverUrl);
+                console.log('Submitting data:', JSON.stringify(formData, null, 2));
+                
                 // Submit to DHIS2
                 const response = await fetch(`${serverUrl}/api/dataValueSets`, {
                     method: 'POST',
@@ -296,7 +300,11 @@
                     body: JSON.stringify(formData)
                 });
 
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
                 const result = await response.json();
+                console.log('Response body:', result);
 
                 if (response.ok && result.status === 'SUCCESS') {
                     showStatus('success', `✅ Data submitted successfully! ${result.importCount?.imported || 0} values imported.`);
@@ -304,16 +312,31 @@
                     // Reset form after 2 seconds
                     setTimeout(() => {
                         document.getElementById('surveyForm').reset();
-                        document.getElementById('photoPreview').innerHTML = '';
-                        photoData = null;
                     }, 2000);
                 } else {
-                    throw new Error(result.description || 'Submission failed');
+                    throw new Error(result.description || result.message || 'Submission failed');
                 }
 
             } catch (error) {
-                showStatus('error', `❌ Error: ${error.message}`);
-                console.error('Submission error:', error);
+                console.error('Full error details:', error);
+                
+                let errorMsg = `❌ Error: ${error.message}`;
+                
+                // Provide specific guidance based on error type
+                if (error.message === 'Failed to fetch') {
+                    errorMsg += '\n\n💡 Possible causes:\n' +
+                               '1. CORS issue - DHIS2 server blocking requests from this domain\n' +
+                               '2. Wrong server URL - check the address\n' +
+                               '3. Network/firewall blocking the connection\n' +
+                               '4. Server is down or unreachable\n\n' +
+                               '🔍 Open browser console (F12) for more details';
+                } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    errorMsg = '❌ Authentication failed - check username and password';
+                } else if (error.message.includes('404')) {
+                    errorMsg = '❌ API endpoint not found - check server URL';
+                }
+                
+                showStatus('error', errorMsg);
             }
 
             submitBtn.disabled = false;
