@@ -86,8 +86,6 @@
             font-family: inherit;
         }
 
-
-
         .config-section {
             background: #f8f9ff;
             padding: 20px;
@@ -99,6 +97,33 @@
             color: #667eea;
             font-size: 16px;
             margin-bottom: 15px;
+        }
+
+        .alert-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .alert-box h4 {
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .alert-box p {
+            color: #856404;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .alert-box code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
         }
 
         .submit-btn {
@@ -130,6 +155,7 @@
             border-radius: 8px;
             margin-top: 15px;
             display: none;
+            white-space: pre-line;
         }
 
         .status-message.success {
@@ -149,6 +175,34 @@
             color: #666;
             margin-top: 4px;
         }
+
+        .instructions {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .instructions h4 {
+            color: #1976D2;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            color: #333;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .instructions code {
+            background: #fff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -158,24 +212,49 @@
             <p>HTC Survey - Monthly Data Collection</p>
         </div>
 
+        <div class="alert-box">
+            <h4>⚠️ Proxy Setup Required</h4>
+            <p>Due to CORS restrictions, you need to set up a Google Apps Script proxy first. Follow the instructions below to create your proxy URL.</p>
+        </div>
+
+        <div class="instructions">
+            <h4>📝 How to Set Up Google Apps Script Proxy:</h4>
+            <ol>
+                <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a></li>
+                <li>Click <strong>"New Project"</strong></li>
+                <li>Copy and paste the proxy code (see below)</li>
+                <li>Click <strong>"Deploy"</strong> → <strong>"New deployment"</strong></li>
+                <li>Choose type: <strong>"Web app"</strong></li>
+                <li>Set "Who has access" to <strong>"Anyone"</strong></li>
+                <li>Click <strong>"Deploy"</strong> and copy the <strong>Web App URL</strong></li>
+                <li>Paste that URL in the "Proxy URL" field below</li>
+            </ol>
+        </div>
+
         <div class="config-section">
-            <h3>⚙️ DHIS2 Configuration</h3>
+            <h3>⚙️ Configuration</h3>
+            
+            <div class="form-group">
+                <label>Google Apps Script Proxy URL <span class="required">*</span></label>
+                <input type="text" id="proxyUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec">
+                <p class="small-text">Your deployed Google Apps Script web app URL</p>
+            </div>
+
             <div class="form-group">
                 <label>DHIS2 Server URL <span class="required">*</span></label>
                 <input type="text" id="serverUrl" value="https://play.im.dhis2.org/stable-2-42-1" placeholder="https://your-instance.dhis2.org">
             </div>
             <div class="form-group">
                 <label>Username <span class="required">*</span></label>
-                <input type="text" id="username" placeholder="admin">
+                <input type="text" id="username" value="admin" placeholder="admin">
             </div>
             <div class="form-group">
                 <label>Password <span class="required">*</span></label>
-                <input type="password" id="password" placeholder="district">
+                <input type="password" id="password" value="district" placeholder="district">
             </div>
             <div class="form-group">
                 <label>Organization Unit ID <span class="required">*</span></label>
-                <input type="text" id="orgUnit" placeholder="e.g., ImspTQPwCqd">
-                <p class="small-text">Find this in DHIS2 Maintenance → Organisation Units</p>
+                <input type="text" id="orgUnit" value="DiszpKrYNg8" placeholder="e.g., DiszpKrYNg8">
             </div>
             <div class="form-group">
                 <label>Period (YYYYMM) <span class="required">*</span></label>
@@ -241,6 +320,7 @@
             statusMessage.style.display = 'none';
 
             // Get configuration values
+            const proxyUrl = document.getElementById('proxyUrl').value.trim();
             const serverUrl = document.getElementById('serverUrl').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
@@ -248,6 +328,13 @@
             const period = document.getElementById('period').value.trim();
 
             // Validate configuration
+            if (!proxyUrl) {
+                showStatus('error', 'Please enter your Google Apps Script Proxy URL.\n\nSee instructions above to create one.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 Submit to DHIS2';
+                return;
+            }
+
             if (!serverUrl || !username || !password || !orgUnit || !period) {
                 showStatus('error', 'Please fill in all DHIS2 configuration fields');
                 submitBtn.disabled = false;
@@ -255,8 +342,11 @@
                 return;
             }
 
-            // Get form values
-            const formData = {
+            // Prepare data for proxy
+            const payload = {
+                dhis2Url: serverUrl,
+                username: username,
+                password: password,
                 dataSet: "lMnO5pQrS6t",
                 completeDate: new Date().toISOString().split('T')[0],
                 period: period,
@@ -286,57 +376,30 @@
             };
 
             try {
-                // First, test connectivity
-                console.log('Testing connection to:', serverUrl);
-                console.log('Submitting data:', JSON.stringify(formData, null, 2));
+                console.log('Sending to proxy:', payload);
                 
-                // Submit to DHIS2
-                const response = await fetch(`${serverUrl}/api/dataValueSets`, {
+                // Submit to Google Apps Script proxy
+                const response = await fetch(proxyUrl, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Basic ' + btoa(username + ':' + password)
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(payload)
                 });
 
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-
-                const result = await response.json();
-                console.log('Response body:', result);
-
-                if (response.ok && result.status === 'SUCCESS') {
-                    showStatus('success', `✅ Data submitted successfully! ${result.importCount?.imported || 0} values imported.`);
-                    
-                    // Reset form after 2 seconds
-                    setTimeout(() => {
-                        document.getElementById('surveyForm').reset();
-                    }, 2000);
-                } else {
-                    throw new Error(result.description || result.message || 'Submission failed');
-                }
+                // Note: no-cors mode doesn't allow reading the response
+                // So we assume success if no error was thrown
+                showStatus('success', '✅ Data submitted successfully!\n\nNote: Due to no-cors mode, we cannot verify the exact response from DHIS2.\nPlease check your DHIS2 instance to confirm the data was saved.');
+                
+                // Reset form after 2 seconds
+                setTimeout(() => {
+                    document.getElementById('surveyForm').reset();
+                }, 2000);
 
             } catch (error) {
                 console.error('Full error details:', error);
-                
-                let errorMsg = `❌ Error: ${error.message}`;
-                
-                // Provide specific guidance based on error type
-                if (error.message === 'Failed to fetch') {
-                    errorMsg += '\n\n💡 Possible causes:\n' +
-                               '1. CORS issue - DHIS2 server blocking requests from this domain\n' +
-                               '2. Wrong server URL - check the address\n' +
-                               '3. Network/firewall blocking the connection\n' +
-                               '4. Server is down or unreachable\n\n' +
-                               '🔍 Open browser console (F12) for more details';
-                } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
-                    errorMsg = '❌ Authentication failed - check username and password';
-                } else if (error.message.includes('404')) {
-                    errorMsg = '❌ API endpoint not found - check server URL';
-                }
-                
-                showStatus('error', errorMsg);
+                showStatus('error', `❌ Error: ${error.message}\n\nPlease check:\n1. Your proxy URL is correct\n2. The proxy script is deployed as a web app\n3. Access is set to "Anyone"`);
             }
 
             submitBtn.disabled = false;
