@@ -180,6 +180,15 @@
             <h3>⚙️ DHIS2 Configuration</h3>
             
             <div class="form-group">
+                <label>Use CORS Proxy?</label>
+                <select id="useCorsProxy">
+                    <option value="yes">Yes - Use CORS Proxy (Recommended)</option>
+                    <option value="no">No - Direct Connection</option>
+                </select>
+                <p class="small-text">Use proxy to bypass CORS restrictions</p>
+            </div>
+
+            <div class="form-group">
                 <label>DHIS2 Server URL <span class="required">*</span></label>
                 <input type="text" id="serverUrl" value="https://play.im.dhis2.org/stable-2-42-1">
             </div>
@@ -334,8 +343,18 @@
                 console.log('Submitting to DHIS2:', serverUrl);
                 console.log('Payload:', JSON.stringify(formData, null, 2));
                 
+                // Check if using CORS proxy
+                const useCorsProxy = document.getElementById('useCorsProxy').value === 'yes';
+                let apiUrl = `${serverUrl}/api/dataValueSets`;
+                
+                if (useCorsProxy) {
+                    // Use CORS proxy
+                    apiUrl = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
+                    console.log('Using CORS proxy:', apiUrl);
+                }
+                
                 // Submit to DHIS2
-                const response = await fetch(`${serverUrl}/api/dataValueSets`, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -384,10 +403,10 @@
                                '1. CORS blocking - DHIS2 server may not allow requests from this domain\n' +
                                '2. Network connection issues\n' +
                                '3. Server is unreachable\n\n' +
-                               '🔧 Solutions:\n' +
-                               '• Open DHIS2 in another tab and try again (to establish session)\n' +
-                               '• Configure CORS in DHIS2: System Settings → Access → CORS whitelist\n' +
-                               '• Use a proxy server (let me know if you need this)';
+                               '🔧 Try:\n' +
+                               '• Enable "Use CORS Proxy" option above\n' +
+                               '• Check your internet connection\n' +
+                               '• Verify DHIS2 server URL is correct';
                 } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
                     errorMsg += '🔑 Authentication failed - check username and password';
                 } else if (error.message.includes('409') || error.message.includes('Conflict')) {
