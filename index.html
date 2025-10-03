@@ -63,6 +63,7 @@
 
         input[type="number"],
         input[type="text"],
+        input[type="password"],
         select,
         textarea {
             width: 100%;
@@ -97,33 +98,6 @@
             color: #667eea;
             font-size: 16px;
             margin-bottom: 15px;
-        }
-
-        .alert-box {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .alert-box h4 {
-            color: #856404;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .alert-box p {
-            color: #856404;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .alert-box code {
-            background: #fff;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
         }
 
         .submit-btn {
@@ -176,32 +150,18 @@
             margin-top: 4px;
         }
 
-        .instructions {
+        .info-box {
             background: #e7f3ff;
             border-left: 4px solid #2196F3;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 20px;
             border-radius: 4px;
         }
 
-        .instructions h4 {
+        .info-box p {
             color: #1976D2;
-            margin-bottom: 10px;
-            font-size: 14px;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-            color: #333;
             font-size: 13px;
-            line-height: 1.8;
-        }
-
-        .instructions code {
-            background: #fff;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 12px;
+            margin: 0;
         }
     </style>
 </head>
@@ -212,49 +172,29 @@
             <p>HTC Survey - Monthly Data Collection</p>
         </div>
 
-        <div class="alert-box">
-            <h4>⚠️ Proxy Setup Required</h4>
-            <p>Due to CORS restrictions, you need to set up a Google Apps Script proxy first. Follow the instructions below to create your proxy URL.</p>
-        </div>
-
-        <div class="instructions">
-            <h4>📝 How to Set Up Google Apps Script Proxy:</h4>
-            <ol>
-                <li>Go to <a href="https://script.google.com" target="_blank">script.google.com</a></li>
-                <li>Click <strong>"New Project"</strong></li>
-                <li>Copy and paste the proxy code (see below)</li>
-                <li>Click <strong>"Deploy"</strong> → <strong>"New deployment"</strong></li>
-                <li>Choose type: <strong>"Web app"</strong></li>
-                <li>Set "Who has access" to <strong>"Anyone"</strong></li>
-                <li>Click <strong>"Deploy"</strong> and copy the <strong>Web App URL</strong></li>
-                <li>Paste that URL in the "Proxy URL" field below</li>
-            </ol>
+        <div class="info-box">
+            <p>💡 <strong>Note:</strong> This form submits data directly to DHIS2. If you encounter CORS errors, you may need to configure CORS settings in DHIS2 or use a proxy.</p>
         </div>
 
         <div class="config-section">
-            <h3>⚙️ Configuration</h3>
+            <h3>⚙️ DHIS2 Configuration</h3>
             
             <div class="form-group">
-                <label>Google Apps Script Proxy URL <span class="required">*</span></label>
-                <input type="text" id="proxyUrl" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec">
-                <p class="small-text">Your deployed Google Apps Script web app URL</p>
-            </div>
-
-            <div class="form-group">
                 <label>DHIS2 Server URL <span class="required">*</span></label>
-                <input type="text" id="serverUrl" value="https://play.im.dhis2.org/stable-2-42-1" placeholder="https://your-instance.dhis2.org">
+                <input type="text" id="serverUrl" value="https://play.im.dhis2.org/stable-2-42-1">
             </div>
             <div class="form-group">
                 <label>Username <span class="required">*</span></label>
-                <input type="text" id="username" value="admin" placeholder="admin">
+                <input type="text" id="username" value="admin">
             </div>
             <div class="form-group">
                 <label>Password <span class="required">*</span></label>
-                <input type="password" id="password" value="district" placeholder="district">
+                <input type="password" id="password" value="district">
             </div>
             <div class="form-group">
                 <label>Organization Unit ID <span class="required">*</span></label>
-                <input type="text" id="orgUnit" value="DiszpKrYNg8" placeholder="e.g., DiszpKrYNg8">
+                <input type="text" id="orgUnit" value="DiszpKrYNg8">
+                <p class="small-text">Your facility/organization unit identifier</p>
             </div>
             <div class="form-group">
                 <label>Period <span class="required">*</span></label>
@@ -346,7 +286,6 @@
             statusMessage.style.display = 'none';
 
             // Get configuration values
-            const proxyUrl = document.getElementById('proxyUrl').value.trim();
             const serverUrl = document.getElementById('serverUrl').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
@@ -354,13 +293,6 @@
             const period = document.getElementById('period').value.trim();
 
             // Validate configuration
-            if (!proxyUrl) {
-                showStatus('error', 'Please enter your Google Apps Script Proxy URL.\n\nSee instructions above to create one.');
-                submitBtn.disabled = false;
-                submitBtn.textContent = '📤 Submit to DHIS2';
-                return;
-            }
-
             if (!serverUrl || !username || !password || !orgUnit || !period) {
                 showStatus('error', 'Please fill in all DHIS2 configuration fields');
                 submitBtn.disabled = false;
@@ -368,11 +300,8 @@
                 return;
             }
 
-            // Prepare data for proxy
-            const payload = {
-                dhis2Url: serverUrl,
-                username: username,
-                password: password,
+            // Get form values
+            const formData = {
                 dataSet: "lMnO5pQrS6t",
                 completeDate: new Date().toISOString().split('T')[0],
                 period: period,
@@ -402,41 +331,72 @@
             };
 
             try {
-                console.log('Sending to proxy:', payload);
+                console.log('Submitting to DHIS2:', serverUrl);
+                console.log('Payload:', JSON.stringify(formData, null, 2));
                 
-                // Submit to Google Apps Script proxy
-                const response = await fetch(proxyUrl, {
+                // Submit to DHIS2
+                const response = await fetch(`${serverUrl}/api/dataValueSets`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': 'Basic ' + btoa(username + ':' + password)
                     },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(formData)
                 });
 
                 console.log('Response status:', response.status);
                 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
                 const result = await response.json();
                 console.log('Response body:', result);
 
-                if (result.success && result.statusCode === 200) {
-                    const importCount = result.data.importCount;
-                    showStatus('success', `✅ Data submitted successfully!\n\n` +
-                        `Imported: ${importCount?.imported || 0} values\n` +
-                        `Updated: ${importCount?.updated || 0} values\n` +
-                        `Ignored: ${importCount?.ignored || 0} values\n\n` +
-                        `Status: ${result.data.status}`);
+                if (result.status === 'SUCCESS') {
+                    const importCount = result.importCount || {};
+                    showStatus('success', 
+                        `✅ Data submitted successfully!\n\n` +
+                        `Imported: ${importCount.imported || 0} values\n` +
+                        `Updated: ${importCount.updated || 0} values\n` +
+                        `Ignored: ${importCount.ignored || 0} values\n` +
+                        `Deleted: ${importCount.deleted || 0} values`
+                    );
                     
                     // Reset form after 3 seconds
                     setTimeout(() => {
                         document.getElementById('surveyForm').reset();
+                        statusMessage.style.display = 'none';
                     }, 3000);
                 } else {
-                    throw new Error(result.data?.description || result.error || 'Submission failed');
+                    throw new Error(result.description || result.message || 'Submission failed');
                 }
 
             } catch (error) {
-                console.error('Full error details:', error);
-                showStatus('error', `❌ Error: ${error.message}\n\nPlease check the Google Apps Script logs for more details.\n\nCommon issues:\n1. Wrong credentials (username/password)\n2. Wrong organization unit ID\n3. Invalid period format\n4. Dataset not assigned to org unit`);
+                console.error('Submission error:', error);
+                
+                let errorMsg = `❌ Error: ${error.message}\n\n`;
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMsg += '💡 Possible causes:\n' +
+                               '1. CORS blocking - DHIS2 server may not allow requests from this domain\n' +
+                               '2. Network connection issues\n' +
+                               '3. Server is unreachable\n\n' +
+                               '🔧 Solutions:\n' +
+                               '• Open DHIS2 in another tab and try again (to establish session)\n' +
+                               '• Configure CORS in DHIS2: System Settings → Access → CORS whitelist\n' +
+                               '• Use a proxy server (let me know if you need this)';
+                } else if (error.message.includes('401') || error.message.includes('Unauthorized')) {
+                    errorMsg += '🔑 Authentication failed - check username and password';
+                } else if (error.message.includes('409') || error.message.includes('Conflict')) {
+                    errorMsg += '⚠️ Data already exists for this period and organization unit';
+                } else if (error.message.includes('404')) {
+                    errorMsg += '❌ API endpoint not found - check server URL';
+                }
+                
+                showStatus('error', errorMsg);
             }
 
             submitBtn.disabled = false;
