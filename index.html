@@ -374,15 +374,50 @@
                 const result = await response.json();
                 console.log('Response body:', result);
 
-                if (result.status === 'SUCCESS') {
-                    const importCount = result.importCount || {};
-                    showStatus('success', 
-                        `✅ Data submitted successfully!\n\n` +
+                // Check for successful import (handle both direct response and nested response)
+                const importResponse = result.response || result;
+                const status = importResponse.status || result.status;
+                
+                if (status === 'SUCCESS' || status === 'OK' || importResponse.description?.includes('successful')) {
+                    const importCount = importResponse.importCount || result.importCount || {};
+                    
+                    let message = `✅ Data submitted successfully!\n\n` +
                         `Imported: ${importCount.imported || 0} values\n` +
                         `Updated: ${importCount.updated || 0} values\n` +
                         `Ignored: ${importCount.ignored || 0} values\n` +
-                        `Deleted: ${importCount.deleted || 0} values`
-                    );
+                        `Deleted: ${importCount.deleted || 0} values`;
+                    
+                    // Check for conflicts/warnings
+                    if (importResponse.conflicts && importResponse.conflicts.length > 0) {
+                        message += `\n\n⚠️ Warnings:\n`;
+                        importResponse.conflicts.forEach(conflict => {
+                            message += `• ${conflict.value}\n`;
+                        });
+                    }
+                    
+                    showStatus('success', message);
+                    
+                    // Reset form after 3 seconds
+                    setTimeout(() => {
+                        document.getElementById('surveyForm').reset();
+                        statusMessage.style.display = 'none';
+                    }, 3000);
+                } else if (status === 'WARNING') {
+                    // Partial success with warnings
+                    const importCount = importResponse.importCount || result.importCount || {};
+                    let message = `⚠️ Import completed with warnings\n\n` +
+                        `Imported: ${importCount.imported || 0} values\n` +
+                        `Updated: ${importCount.updated || 0} values\n` +
+                        `Ignored: ${importCount.ignored || 0} values`;
+                    
+                    if (importResponse.conflicts && importResponse.conflicts.length > 0) {
+                        message += `\n\nIssues:\n`;
+                        importResponse.conflicts.forEach(conflict => {
+                            message += `• ${conflict.value}\n`;
+                        });
+                    }
+                    
+                    showStatus('success', message);
                     
                     // Reset form after 3 seconds
                     setTimeout(() => {
@@ -390,7 +425,7 @@
                         statusMessage.style.display = 'none';
                     }, 3000);
                 } else {
-                    throw new Error(result.description || result.message || 'Submission failed');
+                    throw new Error(importResponse.description || result.message || 'Submission failed');
                 }
 
             } catch (error) {
